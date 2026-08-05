@@ -1,4 +1,4 @@
-# Summary of meta-analysis results (colorectal cancer, tumor vs normal)
+# Summary of meta-analysis results (Cardiomyopathy, Cardiomyopathy vs Healthy)
 # Load packages
 library(tidyverse)
 library(rio)

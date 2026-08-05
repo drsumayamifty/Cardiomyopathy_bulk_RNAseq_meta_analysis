@@ -2,7 +2,6 @@
 # Cardiomyopathy (cardiomyopathy vs healthy) across GREIN datasets
 
 # Load required packages
-install.packages("MetaVolcanoR")
 library(MetaVolcanoR)
 library(tidyverse)
 library(rio)
@@ -24,11 +23,24 @@ dir.create("results/figures/meta-analysis", showWarnings = FALSE, recursive = TR
 local({
   ns <- asNamespace("MetaVolcanoR")
   nm <- ".__C__MetaVolcano"
-  if (bindingIsLocked(nm, ns)) unlockBinding(nm, ns)
-  suppressWarnings(setClass("MetaVolcano",
-                            representation(input = "data.frame", inputnames = "character",
-                                           metaresult = "data.frame", MetaVolcano = "ANY", degfreq = "ANY"),
-                            where = ns))
+  
+  if (bindingIsLocked(nm, ns)) {
+    unlockBinding(nm, ns)
+  }
+  
+  suppressWarnings(
+    setClass(
+      "MetaVolcano",
+      representation(
+        input = "data.frame",
+        inputnames = "character",
+        metaresult = "data.frame",
+        MetaVolcano = "ANY",
+        featurefreq = "ANY"
+      ),
+      where = ns
+    )
+  )
 })
 
 # Gene annotation lookup, reused from the pre-annotated tables produced by
@@ -36,10 +48,28 @@ local({
 anno_files <- list.files("results/tables/annotated", pattern = "[.]csv$", full.names = TRUE)
 gene_annotation <- anno_files |>
   lapply(function(f) {
-    import(f) |> select(any_of(c("Gene_ID", "Gene_Symbol", "Gene_Description")))
+    
+    df <- import(f)
+    
+    id_column <- if ("ENSEMBL" %in% colnames(df)) {
+      "ENSEMBL"
+    } else {
+      "Gene_ID"
+    }
+    
+    df |>
+      transmute(
+        Gene_ID = sub(
+          "\\..*$",
+          "",
+          as.character(.data[[id_column]])
+        ),
+        Gene_Symbol,
+        Gene_Description
+      )
   }) |>
   bind_rows() |>
-  mutate(Gene_ID = as.character(Gene_ID)) |>
+  filter(!is.na(Gene_ID), Gene_ID != "") |>
   distinct(Gene_ID, .keep_all = TRUE)
 
 annotate_genes <- function(df, id_col = "Gene_ID") {
@@ -54,23 +84,40 @@ deg_files <- list.files("results/tables/DESeq2", pattern = "\\.csv$", full.names
 geo_ids   <- tools::file_path_sans_ext(basename(deg_files))
 
 # Read all studies into a named list
-studies <- lapply(deg_files, import)
+studies <- lapply(deg_files, function(f) {
+  df <- import(f)
+  
+  df$Gene_ID <- sub(
+    "\\..*$",
+    "",
+    as.character(df$Gene_ID)
+  )
+  
+  df$lfcSE <- as.numeric(df$lfcSE)^2
+  
+  df |>
+    dplyr::arrange(pvalue) |>
+    dplyr::distinct(Gene_ID, .keep_all = TRUE)
+})
 names(studies) <- geo_ids
 
 # 04. Meta-Analysis -- Random Effect Model
 meta_degs_rem <- rem_mv(
   diffexp       = studies,
-  pcriteria     = "padj",
+  pcriteria     = "pvalue",
   foldchangecol = "log2FoldChange",
   genenamecol   = "Gene_ID",
   geneidcol     = NULL,
-  collaps       = TRUE,
+  collaps       = FALSE,
   vcol          = "lfcSE",
   cvar          = FALSE,
   metathr       = 0.01,
+  llcol         = NULL,
+  rlcol         = NULL,
   jobname       = "MetaVolcano_REM",
   outputfolder  = "results/figures/meta-analysis/",
   draw          = "PDF",
+  render        = TRUE,
   ncores        = 1 # adjust as per your PC core! 
 )
 
@@ -82,18 +129,18 @@ export(annotated_results, "results/tables/meta-analysis/random_effect_model.csv"
 
 # Filter DEGs: significant (randomP < 0.05) and reliable effect (|randomSummary| >= 1)
 key_genes <- annotated_results |>
-  filter(randomP < 0.05, abs(randomSummary) >= 1)
+  filter(randomP.adjust < 0.05, abs(randomSummary) >= 1)
 export(key_genes, "results/tables/meta-analysis/filtered_meta_degs.csv")
 
 # Meta-Analysis -- Combining approach (Mean)
 meta_degs_comb <- combining_mv(
   diffexp       = studies,
-  pcriteria     = "padj",
+  pcriteria     = "pvalue",
   foldchangecol = "log2FoldChange",
   genenamecol   = "Gene_ID",
   metafc        = "Mean",
   metathr       = 0.01,
-  collaps       = TRUE,
+  collaps       = FALSE,
   jobname       = "MetaVolcano_Combining",
   outputfolder  = "results/figures/meta-analysis/",
   draw          = "PDF"

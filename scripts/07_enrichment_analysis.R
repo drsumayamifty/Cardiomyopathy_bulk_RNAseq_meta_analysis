@@ -1,4 +1,4 @@
-# Functional enrichment (ORA + GSEA) of colorectal cancer meta-analysis DEGs
+# Functional enrichment (ORA + GSEA) of Cardiomyopathy meta-analysis DEGs
 # Load packages
 library(clusterProfiler)
 library(enrichplot)
@@ -25,7 +25,7 @@ LFC_CUTOFF  <- 1
 META_FILE <- "results/tables/meta-analysis/random_effect_model.csv"
 OUT_CSV   <- "results/tables/enrichment"
 OUT_FIG   <- "results/figures/enrichment"
-PREFIX    <- "colorectal"
+PREFIX    <- "Cardiomyopathy"
 dir.create(OUT_CSV, showWarnings = FALSE, recursive = TRUE)
 dir.create(OUT_FIG, showWarnings = FALSE, recursive = TRUE)
 
@@ -178,7 +178,7 @@ save_gsea_plot <- function(res, title, path, n = 3) {
 }
 
 # ------------------------------------------------------------------------------
-# Driver (single cancer: colorectal)
+# Driver (cardiomyopathy)
 # ------------------------------------------------------------------------------
 message("\n=== ", toupper(PREFIX), " ENRICHMENT ===")
 

@@ -1,4 +1,4 @@
-# PPI network analysis of colorectal cancer meta-analysis DEGs (STRING + igraph)
+# PPI network analysis of Cardiomyopathy meta-analysis DEGs (STRING + igraph)
 # Load packages
 library(httr)
 library(igraph)
@@ -33,7 +33,7 @@ MIN_MODULE_SIZE <- 5
 META_FILE <- "results/tables/meta-analysis/random_effect_model.csv"
 OUT_CSV   <- "results/tables/network"
 OUT_FIG   <- "results/figures/network"
-PREFIX    <- "colorectal"
+PREFIX    <- "Cardiomyopathy"
 dir.create(OUT_CSV, showWarnings = FALSE, recursive = TRUE)
 dir.create(OUT_FIG, showWarnings = FALSE, recursive = TRUE)
 
